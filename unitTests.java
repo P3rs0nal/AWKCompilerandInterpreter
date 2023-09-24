@@ -161,13 +161,16 @@ public class unitTests{
         	if(parsingTest.getTokens().peek().getTokenType().equals(Token.Tokens.SEPARATOR))
               	 Assert.assertTrue((parsingTest.acceptSeperators()));
         	else
-        		parsingTest.getTokens().removeFirst();
+        		parsingTest.getTokens().removeFirst(); //remove non-separator tokens to allow acceptSeparators to be tested multiple times
         }   
      }
     @Test
     public void testParseFunctionandParseAction() throws Exception {
     	/* due to being unable to handle statements, the tests will consistent of 
     	 * functions with empty bodies
+    	 * 
+    	 * since parseAction does not consist of any "false" condition, there is no way to test
+    	 * exception throwing since the function will infinitely loop (parseAction will always return true)
     	 */
          String function = "BEGIN function factorial(f,y,z){ } function testFunction(parameter, someOtherParameter){} END";
          
@@ -179,7 +182,6 @@ public class unitTests{
          
          ProgramNode testerProgOne = parsingFunctionOne.parse();
          
-         //System.out.println(testerProgOne);
          Assert.assertEquals(testerProgOne.toString(),"function factorial(f,y,z){\n"
          		+ "\tnull\n}\n"
          		+ "function testFunction(parameter,someOtherParameter){\n"

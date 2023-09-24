@@ -1,6 +1,7 @@
 import java.util.LinkedList;
 
 public class FunctionNode extends Node{
+	
 	private String name;
 	private LinkedList<String> parameters;
 	private LinkedList<StatementNode> statements;

@@ -17,7 +17,7 @@ public class Parser {
 	}
 	
 	public ProgramNode parse() throws Exception {
-		ProgramNode program = new ProgramNode();
+		ProgramNode program = new ProgramNode(new LinkedList<FunctionNode>(), new LinkedList<BlockNode>(), new LinkedList<BlockNode>(), new LinkedList<BlockNode>());
 		while(tokenMNG.moreTokens()) { 
 			if(!parseFunction(program))
 				if(!parseAction(program))
@@ -35,13 +35,13 @@ public class Parser {
 			if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 				name = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
 				if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
+					//collect parameters
 					while(!tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.CLOSEPARENTHSIS)) {
 						tokenMNG.matchAndRemove(Token.Tokens.COMMA).isPresent();
-						parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());		
+						parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());
 					}
 					tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS);
-					BlockNode block = parseBlock();
-					statements.addAll(block.statements);
+					statements.addAll(parseBlock().getStatements());
 					FunctionNode function = new FunctionNode(name, parameters, statements);
 					inp.setFunctions(function);
 					return true;
@@ -60,9 +60,10 @@ public class Parser {
 			inp.setEndBlocks(parseBlock());
 			return true;
 		}
-		else
+		else {
 			inp.setBlocks(new BlockNode(new LinkedList<StatementNode>(), parseOperation()));
-		return true;
+			return true;
+		}
 	}
 	
 	public BlockNode parseBlock() {
