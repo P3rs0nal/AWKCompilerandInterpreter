@@ -182,6 +182,7 @@ public class unitTests{
          
          ProgramNode testerProgOne = parsingFunctionOne.parse();
          
+         System.out.println(testerProgOne);
          Assert.assertEquals(testerProgOne.toString(),"function factorial(f,y,z){\n"
          		+ "\tnull\n}\n"
          		+ "function testFunction(parameter,someOtherParameter){\n"

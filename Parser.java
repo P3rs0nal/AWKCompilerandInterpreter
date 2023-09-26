@@ -61,7 +61,9 @@ public class Parser {
 			return true;
 		}
 		else {
-			inp.setBlocks(new BlockNode(new LinkedList<StatementNode>(), parseOperation()));
+			parseOperation();
+			BlockNode block = parseBlock();
+			inp.setBlocks(block);
 			return true;
 		}
 	}
