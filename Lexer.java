@@ -190,13 +190,17 @@ public class Lexer {
 		return new Token(Token.Tokens.STRINGLITERAL, literal, line, charPos);
 	}
 	
-	public Token handlePatterns() {
+	public Token handlePatterns() throws Exception {
 		String pattern = "";
 		strhdlr.swallow(1);
 		charPos++;
 		//get rid of start tick
 		while(strhdlr.peek(charPos) != '`') {
-			pattern+= strhdlr.getChar();
+			try {
+			pattern+= strhdlr.getChar();}
+			catch(Exception E) {
+				throw new Exception("Missing end: `");
+			}
 			charPos++;
 		}
 		strhdlr.swallow(1);

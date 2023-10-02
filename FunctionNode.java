@@ -17,7 +17,12 @@ public class FunctionNode extends Node{
 		String statementsInList = "";
 		for(String parameter : parameters)
 			parametersInList += parameter + ",";
+		try {
 		parametersInList = parametersInList.substring(0, parametersInList.length()-1);
+		}
+		catch (Exception E){
+			
+		}
 		for(StatementNode statement : statements)
 			statementsInList += statement;
 		return ("function " + name + "(" + parametersInList + "){\n" + "\t" + statementsInList + "\n}\n");
