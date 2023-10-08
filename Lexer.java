@@ -44,12 +44,12 @@ public class Lexer {
 		singleSymbols.put(")", Token.Tokens.CLOSEPARENTHSIS);
 		singleSymbols.put("$", Token.Tokens.DOLLARSIGN);
 		singleSymbols.put("~", Token.Tokens.TILDE);
-		singleSymbols.put("=", Token.Tokens.EQUALTO);
+		singleSymbols.put("=", Token.Tokens.EQUAL);
 		singleSymbols.put("<", Token.Tokens.LESSTHAN);
 		singleSymbols.put(">", Token.Tokens.GREATERTHAN);
 		singleSymbols.put("!", Token.Tokens.EXCLAMATION);
 		singleSymbols.put("+", Token.Tokens.PLUS);
-		singleSymbols.put("^", Token.Tokens.POWERTO);
+		singleSymbols.put("^", Token.Tokens.POWER);
 		singleSymbols.put("-", Token.Tokens.MINUS);
 		singleSymbols.put("?", Token.Tokens.QUESTIONMARK);
 		singleSymbols.put(":", Token.Tokens.COLON);

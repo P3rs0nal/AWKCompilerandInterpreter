@@ -30,7 +30,6 @@ public class Parser {
 		String name;
 		LinkedList<String> parameters = new LinkedList<String>();
 		LinkedList<StatementNode> statements = new LinkedList<StatementNode>(); 
-		
 		if(tokenMNG.matchAndRemove(Token.Tokens.FUNCTION).isPresent()) {
 			if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 				name = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
@@ -103,60 +102,363 @@ public class Parser {
 	}
 	
 	public Optional<Node> parseBottomLevel() throws Exception{
-		while(!tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.SEPARATOR)) {
-			if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.STRINGLITERAL)))
-				return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.STRINGLITERAL).get().getTokenValue()));
-			//escape for closing delimiters
-			else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.CLOSEBRACKET) || tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.CLOSEPARENTHSIS))
-				break;
-			else if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.NUMBER))) 
-				return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.NUMBER).get().getTokenValue()));
-			else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.PATTERN))
-				return Optional.of(new PatternNode(tokenMNG.matchAndRemove(Token.Tokens.PATTERN).get().getTokenValue()));
-			else if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent())
-				return parseOperation();
-			else if(tokenMNG.matchAndRemove(Token.Tokens.EXCLAMATION).isPresent()) 
-				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.NOT));
-			else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) 
-				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.SUBTRACT));
-			else if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) 
-				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.ADD));
-			else if(tokenMNG.matchAndRemove(Token.Tokens.INCREMENT).isPresent()) 
-				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREINCREMENT));
-			else if(tokenMNG.matchAndRemove(Token.Tokens.DECREMENT).isPresent()) 
-				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREDECREMENT));
-			else
-				return parseLValue();
-		}
+			if(tokenMNG.peek(0).isPresent()) {
+				if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.STRINGLITERAL)))
+					return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.STRINGLITERAL).get().getTokenValue()));
+				else if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.NUMBER))) 
+					return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.NUMBER).get().getTokenValue()));
+				else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.PATTERN))
+					return Optional.of(new PatternNode(tokenMNG.matchAndRemove(Token.Tokens.PATTERN).get().getTokenValue()));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()){
+					Optional<Node> parseOperationRes = parseOperation();
+					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent())
+						return parseOperationRes;
+					else
+						throw new Exception("Missing close )");
+				}
+				else if(tokenMNG.matchAndRemove(Token.Tokens.EXCLAMATION).isPresent()) 
+					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.NOT));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) 
+					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.UNARYNEGATIVE));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) 
+					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.UNARYPOSITIVE));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.INCREMENT).isPresent())
+					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREINCREMENT));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.DECREMENT).isPresent())
+					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREDECREMENT));
+				else
+					return parseLValue();
+			}
 		return Optional.empty();
 	}
 
 	public Optional<Node> parseLValue() throws Exception{
 		String varName;
-		if(tokenMNG.matchAndRemove(Token.Tokens.DOLLARSIGN).isPresent()) {
-			return Optional.of(new OperationNode(parseBottomLevel(), OperationNode.possibleOperations.DOLLAR));
-		}
-		if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
+		if(tokenMNG.peek(0).isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.DOLLARSIGN).isPresent()) {
+				Optional<Node> temp = parseBottomLevel();
+				if(temp.isPresent())
+					return Optional.of(new OperationNode(temp, OperationNode.possibleOperations.DOLLAR));
+				else
+					return Optional.empty();
+			}
 			if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 				varName = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
 				if(tokenMNG.matchAndRemove(Token.Tokens.OPENBRACKET).isPresent()) {
-					VariableReferenceNode retNode = new VariableReferenceNode(varName, parseOperation());
+					Optional<Node> parseOperationRes = parseOperation();
 					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACKET).isPresent()) {
-						return Optional.of(retNode);
+						if(parseOperationRes.isPresent())
+							return Optional.of(new VariableReferenceNode(varName, parseOperationRes));
+						else
+							return Optional.of(new VariableReferenceNode(varName));
 					}
-					else {
+					else
 						throw new Exception("Missing end bracket");
-					}
 				}
-				else
-					return Optional.of(new VariableReferenceNode(varName, parseOperation()));
+				return Optional.of(new VariableReferenceNode(varName));
 			}
 		}
-		return parseBottomLevel();
+		return Optional.empty();
 	}
 	
 	public Optional<Node> parseOperation() throws Exception{
-		return parseBottomLevel();
+		return parseAssignment();
+	}
+	
+	public Optional<Node> parseAssignment() throws Exception{
+		Optional<Node> leftVal = parseTernary();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.EQUAL).isPresent()) {
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), rightVal.get()));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}		
+			else if(tokenMNG.matchAndRemove(Token.Tokens.SUBTRACTTO).isPresent()){
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.SUBTRACT)));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.ADDTO).isPresent()){
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.ADD)));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.DIVIDETO).isPresent()){
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.DIVIDE)));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.MULTIPLYTO).isPresent()){
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.MULTIPLY)));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.REMAINDERTO).isPresent()){
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.MODULO)));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.RAISETO).isPresent()){
+				rightVal = parseTernary();
+				if(rightVal.isPresent()) {
+					return Optional.of(new AssignmentNode(leftVal.get(), new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.EXPONENT)));
+				}
+				else
+					throw new Exception("Missing righthand expression");	
+			}	
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parseTernary() throws Exception{
+		Optional<Node> left = parseOr();
+		if(tokenMNG.matchAndRemove(Token.Tokens.QUESTIONMARK).isEmpty())
+			return left;
+		Optional<Node> middle = parseOr();
+		if(tokenMNG.matchAndRemove(Token.Tokens.COLON).isEmpty())
+			throw new Exception("Expected Colon");
+		Optional<Node> right = parseOr();
+		if(middle.isEmpty() || right.isEmpty()) {
+			throw new Exception("Expected Expression");}
+		return Optional.of(new TernaryNode(left.get(),middle.get(),right.get()));
+	}
+	
+	public Optional<Node> parseOr() throws Exception{
+		Optional<Node> leftVal = parseAnd();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.DOUBLEOR).isPresent()) {
+				rightVal = parseAnd();
+				if(rightVal.isPresent())
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.OR));
+				else
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}	
+	
+	public Optional<Node> parseAnd() throws Exception{
+		Optional<Node> leftVal = parseArray();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.DOUBLEAND).isPresent()) {
+				rightVal = parseArray();
+				if(rightVal.isPresent())
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.AND));
+				else 
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parseArray() throws Exception {
+		Optional<Node> var = parseMatch();
+		Optional<Node> exp;
+		if(var.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.IN).isPresent()) {
+				exp = parseMatch();
+				if(exp.isPresent()) {
+					return Optional.of(new OperationNode(var,exp,OperationNode.possibleOperations.IN));
+				}
+				else
+					throw new Exception("Missing righthand expression");	
+			}
+		}
+		return var;
+	}
+	
+	public Optional<Node> parseMatch() throws Exception{
+		Optional<Node> leftVal = parseComparison();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.TILDE).isPresent()) {
+				rightVal = parseComparison();
+				if(rightVal.isPresent())
+					return Optional.of(new OperationNode(leftVal,rightVal, OperationNode.possibleOperations.MATCH));
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			if(tokenMNG.matchAndRemove(Token.Tokens.DOESNOTMATCH).isPresent()) {
+				rightVal = parseComparison();
+				if(rightVal.isPresent())
+					return Optional.of(new OperationNode(leftVal,rightVal, OperationNode.possibleOperations.NOTMATCH));
+				else
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parseComparison() throws Exception{
+		Optional<Node> leftVal = parseConcat();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.GREATTHANEQUALTO).isPresent()) {
+				rightVal = parseConcat();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.GREATERTHANEQUAL));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.GREATERTHAN).isPresent()) {
+				rightVal = parseConcat();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.GREATERTHAN));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.ISEQUALTO).isPresent()) {
+				rightVal = parseConcat();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.EQUAL));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.NOTEQUALTO).isPresent()) {
+				rightVal = parseConcat();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.NOTEQUAL));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.LESSTHANEQUALTO).isPresent()) {
+				rightVal = parseConcat();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.LESSTHANEQUAL));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.LESSTHAN).isPresent()) {
+				rightVal = parseConcat();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.LESSTHAN));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parseConcat() throws Exception{
+		Optional<Node> leftExp = parseAddSubtract();
+		if(leftExp.isPresent()) {
+			Optional<Node> rightExp = parseAddSubtract();
+			if(rightExp.isPresent())
+				return Optional.of(new OperationNode(leftExp, rightExp, OperationNode.possibleOperations.CONCATENATION));
+			else
+				return leftExp;
+		}
+		return leftExp;
+	}
+	
+	public Optional<Node> parseAddSubtract() throws Exception{
+		Optional<Node> leftVal = parseMulDivMod();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) {
+				rightVal = parseMulDivMod();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.ADD));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) {
+				rightVal = parseMulDivMod();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.SUBTRACT));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parseMulDivMod() throws Exception{
+		Optional<Node> leftVal = parseExponent();
+		Optional<Node> rightVal;
+ 		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.STAR).isPresent()) {
+				rightVal = parseExponent();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.MULTIPLY));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.FORWARDSLASH).isPresent()) {
+				rightVal = parseExponent();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.DIVIDE));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.MODULO).isPresent()) {
+				rightVal = parseExponent();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.MODULO));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parseExponent() throws Exception{
+		Optional<Node> leftVal = parsePost();
+		Optional<Node> rightVal;
+		if(leftVal.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.POWER).isPresent()) {
+				rightVal = parsePost();
+				if(rightVal.isPresent()) {
+					return Optional.of(new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.EXPONENT));
+				}
+				else
+					throw new Exception("Missing righthand expression");
+			}
+		}
+		return leftVal;
+	}
+	
+	public Optional<Node> parsePost() throws Exception{
+		Optional<Node> temp = parseBottomLevel();
+		if(temp.isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.INCREMENT).isPresent())
+				return Optional.of(new OperationNode(temp, OperationNode.possibleOperations.POSTINCREMENT));
+			else if(tokenMNG.matchAndRemove(Token.Tokens.DECREMENT).isPresent())
+				return Optional.of(new OperationNode(temp, OperationNode.possibleOperations.POSTDECREMENT));
+		}
+		return temp;
 	}
 	
 	public LinkedList<Token> getTokens(){
