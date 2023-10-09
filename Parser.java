@@ -165,6 +165,7 @@ public class Parser {
 		return parseAssignment();
 	}
 	
+	//right associative
 	public Optional<Node> parseAssignment() throws Exception{
 		Optional<Node> leftVal = parseTernary();
 		Optional<Node> rightVal;
@@ -228,64 +229,78 @@ public class Parser {
 		}
 		return leftVal;
 	}
-	
+	//right associative
 	public Optional<Node> parseTernary() throws Exception{
 		Optional<Node> left = parseOr();
 		if(tokenMNG.matchAndRemove(Token.Tokens.QUESTIONMARK).isEmpty())
 			return left;
-		Optional<Node> middle = parseOr();
+		Optional<Node> middle = parseTernary(); //accounts for a nested ternary expression
 		if(tokenMNG.matchAndRemove(Token.Tokens.COLON).isEmpty())
 			throw new Exception("Expected Colon");
-		Optional<Node> right = parseOr();
+		Optional<Node> right = parseTernary(); //accounts for a nested ternary expression
 		if(middle.isEmpty() || right.isEmpty()) {
 			throw new Exception("Expected Expression");}
 		return Optional.of(new TernaryNode(left.get(),middle.get(),right.get()));
 	}
 	
+	//left associative
 	public Optional<Node> parseOr() throws Exception{
 		Optional<Node> leftVal = parseAnd();
 		Optional<Node> rightVal;
-		if(leftVal.isPresent()) {
-			if(tokenMNG.matchAndRemove(Token.Tokens.DOUBLEOR).isPresent()) {
-				rightVal = parseAnd();
-				if(rightVal.isPresent())
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.OR));
-				else
-					throw new Exception("Missing righthand expression");
+		while(true) { // loop for associativity
+			if(leftVal.isPresent()) {
+				if(tokenMNG.matchAndRemove(Token.Tokens.DOUBLEOR).isPresent()) {
+					rightVal = parseOperation();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.OR);
+						leftVal = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");
+				}
 			}
+			return leftVal;
 		}
-		return leftVal;
 	}	
 	
+	//left associative
 	public Optional<Node> parseAnd() throws Exception{
 		Optional<Node> leftVal = parseArray();
 		Optional<Node> rightVal;
-		if(leftVal.isPresent()) {
-			if(tokenMNG.matchAndRemove(Token.Tokens.DOUBLEAND).isPresent()) {
-				rightVal = parseArray();
-				if(rightVal.isPresent())
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.AND));
-				else 
-					throw new Exception("Missing righthand expression");
+		while(true) {// loop for associativity
+			if(leftVal.isPresent()) {
+				if(tokenMNG.matchAndRemove(Token.Tokens.DOUBLEAND).isPresent()) {
+					rightVal = parseOperation();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.AND);
+						leftVal = Optional.of(op);
+					}
+					else 
+						throw new Exception("Missing righthand expression");
+				}
 			}
+			return leftVal;
 		}
-		return leftVal;
 	}
 	
+	//left associative
 	public Optional<Node> parseArray() throws Exception {
 		Optional<Node> var = parseMatch();
 		Optional<Node> exp;
-		if(var.isPresent()) {
-			if(tokenMNG.matchAndRemove(Token.Tokens.IN).isPresent()) {
-				exp = parseMatch();
-				if(exp.isPresent()) {
-					return Optional.of(new OperationNode(var,exp,OperationNode.possibleOperations.IN));
+		while(true) {// loop for associativity
+			if(var.isPresent()) {
+				if(tokenMNG.matchAndRemove(Token.Tokens.IN).isPresent()) {
+					exp = parseOperation();
+					if(exp.isPresent()) {
+						OperationNode op = new OperationNode(var, exp, OperationNode.possibleOperations.IN);
+						var = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");	
 				}
-				else
-					throw new Exception("Missing righthand expression");	
 			}
+			return var;
 		}
-		return var;
 	}
 	
 	public Optional<Node> parseMatch() throws Exception{
@@ -366,83 +381,104 @@ public class Parser {
 		return leftVal;
 	}
 	
+	//left associative
 	public Optional<Node> parseConcat() throws Exception{
 		Optional<Node> leftExp = parseAddSubtract();
-		if(leftExp.isPresent()) {
-			Optional<Node> rightExp = parseAddSubtract();
-			if(rightExp.isPresent())
-				return Optional.of(new OperationNode(leftExp, rightExp, OperationNode.possibleOperations.CONCATENATION));
-			else
-				return leftExp;
+		while(true) {// loop for associativity
+			if(leftExp.isPresent()) {
+				Optional<Node> rightExp = parseAddSubtract();
+				if(rightExp.isPresent()) {
+					OperationNode op = new OperationNode(leftExp, rightExp, OperationNode.possibleOperations.CONCATENATION);
+					leftExp = Optional.of(op);
+				}
+				else
+					return leftExp;
+			}
+			else return leftExp;
 		}
-		return leftExp;
 	}
 	
+	//left associative
 	public Optional<Node> parseAddSubtract() throws Exception{
 		Optional<Node> leftVal = parseMulDivMod();
 		Optional<Node> rightVal;
-		if(leftVal.isPresent()) {
-			if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) {
-				rightVal = parseMulDivMod();
-				if(rightVal.isPresent()) {
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.ADD));
+		// loop for associativity
+		while(true) {
+			if(leftVal.isPresent()) {
+				if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) {
+					rightVal = parseMulDivMod();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.ADD);
+						leftVal = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");
+				}
+				else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) {
+					rightVal = parseMulDivMod();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.SUBTRACT);
+						leftVal = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");
 				}
 				else
-					throw new Exception("Missing righthand expression");
+					return leftVal;
 			}
-			else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) {
-				rightVal = parseMulDivMod();
-				if(rightVal.isPresent()) {
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.SUBTRACT));
-				}
-				else
-					throw new Exception("Missing righthand expression");
-			}
+			else
+				return leftVal;
 		}
-		return leftVal;
 	}
 	
+	//left associative
 	public Optional<Node> parseMulDivMod() throws Exception{
 		Optional<Node> leftVal = parseExponent();
 		Optional<Node> rightVal;
- 		if(leftVal.isPresent()) {
-			if(tokenMNG.matchAndRemove(Token.Tokens.STAR).isPresent()) {
-				rightVal = parseExponent();
-				if(rightVal.isPresent()) {
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.MULTIPLY));
+		while(true) {// loop for associativity
+			if(leftVal.isPresent()) {
+				if(tokenMNG.matchAndRemove(Token.Tokens.STAR).isPresent()) {
+					rightVal = parseExponent();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.MULTIPLY);
+						leftVal = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");
 				}
-				else
-					throw new Exception("Missing righthand expression");
-			}
-			else if(tokenMNG.matchAndRemove(Token.Tokens.FORWARDSLASH).isPresent()) {
-				rightVal = parseExponent();
-				if(rightVal.isPresent()) {
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.DIVIDE));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.FORWARDSLASH).isPresent()) {
+					rightVal = parseExponent();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.DIVIDE);
+						leftVal = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");
 				}
-				else
-					throw new Exception("Missing righthand expression");
-			}
-			else if(tokenMNG.matchAndRemove(Token.Tokens.MODULO).isPresent()) {
-				rightVal = parseExponent();
-				if(rightVal.isPresent()) {
-					return Optional.of(new OperationNode(leftVal,rightVal,OperationNode.possibleOperations.MODULO));
+				else if(tokenMNG.matchAndRemove(Token.Tokens.MODULO).isPresent()) {
+					rightVal = parseExponent();
+					if(rightVal.isPresent()) {
+						OperationNode op = new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.MODULO);
+						leftVal = Optional.of(op);
+					}
+					else
+						throw new Exception("Missing righthand expression");
 				}
-				else
-					throw new Exception("Missing righthand expression");
+				else return leftVal;
 			}
+			else
+				return leftVal;
 		}
-		return leftVal;
 	}
-	
+	//right associative
 	public Optional<Node> parseExponent() throws Exception{
 		Optional<Node> leftVal = parsePost();
 		Optional<Node> rightVal;
 		if(leftVal.isPresent()) {
 			if(tokenMNG.matchAndRemove(Token.Tokens.POWER).isPresent()) {
-				rightVal = parsePost();
-				if(rightVal.isPresent()) {
+				rightVal = parseExponent(); //associative call and accounts for nested exponents
+				if(rightVal.isPresent())
 					return Optional.of(new OperationNode(leftVal, rightVal, OperationNode.possibleOperations.EXPONENT));
-				}
 				else
 					throw new Exception("Missing righthand expression");
 			}
