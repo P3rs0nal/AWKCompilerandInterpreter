@@ -17,7 +17,7 @@ public class VariableReferenceNode extends Node{
 	public String toString() {
 		if(expression.isEmpty())
 			return varName;
-		return varName.toString() + " " + expression.get().toString();
+		return varName.toString() + " " + expression.get().toString() + "";
 	}
 	
 }

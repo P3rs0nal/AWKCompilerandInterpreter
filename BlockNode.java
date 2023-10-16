@@ -30,8 +30,8 @@ public class BlockNode extends Node{
 	public String toString() {
 		String statementsInList = "";
 		for(StatementNode statement : statements)
-			statementsInList += statement;
-		//since conditions is currently null, there is nothing to show but statements
-		return statementsInList;
+			if(statement != null)
+				statementsInList += statement + " ";
+		return statementsInList.toString();
 	}
 }

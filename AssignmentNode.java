@@ -1,5 +1,5 @@
 
-public class AssignmentNode extends Node{
+public class AssignmentNode extends StatementNode{
 	Node target;
 	Node expression;
 	
@@ -9,6 +9,6 @@ public class AssignmentNode extends Node{
 	}
 	
 	public String toString() {
-		return (target + " = " + expression);
+		return (target + " = " + expression + "");
 	}
 }

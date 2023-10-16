@@ -46,18 +46,27 @@ public class ProgramNode extends Node{
 	}
 	
 	public String toString() {
-		String functions = "";
-		String starts = "";
-		String midBlocks = "";
-		String ends = "";
-		for(FunctionNode function : functionNodes)
-			functions += function.toString();
-		for(BlockNode start : startBlock)
-			starts += start.toString();
-		for(BlockNode block : startBlock)
-			midBlocks += block.toString();
-		for(BlockNode end : startBlock)
-			ends += end.toString();
-		return (starts + functions + midBlocks + ends);
+		String ret = "";
+		if(!functionNodes.isEmpty())
+			for(Node f: functionNodes) {
+				if(f != null)
+				ret+= f.toString();
+			}
+		if(!block.isEmpty())
+			for(Node b: block) {
+				if(b != null)
+				ret+= "" + b.toString();
+			}
+		if(!startBlock.isEmpty())
+			for(Node b: startBlock) {
+				if(b != null)
+				ret+= "" + b.toString();
+			}
+		if(!endBlock.isEmpty())
+			for(Node b: endBlock) {
+				if(b != null)
+				ret+= "" + b.toString();
+			}
+		return ret;
 	}
 }

@@ -19,9 +19,11 @@ public class Parser {
 	public ProgramNode parse() throws Exception {
 		ProgramNode program = new ProgramNode(new LinkedList<FunctionNode>(), new LinkedList<BlockNode>(), new LinkedList<BlockNode>(), new LinkedList<BlockNode>());
 		while(tokenMNG.moreTokens()) { 
-			if(!parseFunction(program))
-				if(!parseAction(program))
+			if(!parseFunction(program)) {
+				if(!parseAction(program)) {
 					throw new Exception("Error.");
+					}
+				}
 		}
 		return program;
 	}
@@ -29,40 +31,46 @@ public class Parser {
 	public boolean parseFunction(ProgramNode inp) throws Exception {
 		String name;
 		LinkedList<String> parameters = new LinkedList<String>();
-		LinkedList<StatementNode> statements = new LinkedList<StatementNode>(); 
+		LinkedList<StatementNode> statements = new LinkedList<StatementNode>();
 		if(tokenMNG.matchAndRemove(Token.Tokens.FUNCTION).isPresent()) {
 			if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 				name = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
 				if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
 					//collect parameters
-					while(!tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.CLOSEPARENTHSIS)) {
-						if(tokenMNG.matchAndRemove(Token.Tokens.COMMA).isPresent())
-							if(parameters.isEmpty())
-								throw new Exception("Invalid parameter.");
+					while(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 						acceptSeperators();
 						if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
-							parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());
-							acceptSeperators();
-							if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.COMMA)) {
-								//dual comma exception
-								tokenMNG.matchAndRemove(Token.Tokens.COMMA);
-								if(tokenMNG.matchAndRemove(Token.Tokens.COMMA).isPresent())
-									throw new Exception("Invalid parameter.");
-								acceptSeperators();
+							// case 1 parameter
+							if(tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.CLOSEPARENTHSIS)) {
+								parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());
 							}
-							else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
-								// missing comma exception
-								throw new Exception("Expected comma.");
+							// case n parameter
+							else if(tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.COMMA)) {
+								if(tokenMNG.peek(2).get().getTokenType().equals(Token.Tokens.WORD)) {
+									parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());
+									tokenMNG.matchAndRemove(Token.Tokens.COMMA);
+								}
 							}
+							else
+								throw new Exception("Unexpected character");
 						}
 					}
-					tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS);
-					statements.addAll(parseBlock().getStatements());
+					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isEmpty())
+						throw new Exception("Expected )");
+					if(tokenMNG.matchAndRemove(Token.Tokens.OPENBRACE).isEmpty())
+						throw new Exception("Expected {");
+					while(tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE).isEmpty()) {
+						statements.addAll(parseBlock().getStatements());
+					}
 					FunctionNode function = new FunctionNode(name, parameters, statements);
 					inp.setFunctions(function);
 					return true;
 				}
+				else 
+					throw new Exception("Expected (");
 			}
+			else
+				throw new Exception("Missing function name");
 		}
 		return false;
 	}
@@ -73,10 +81,13 @@ public class Parser {
 			return true;
 		}
 		else if(tokenMNG.matchAndRemove(Token.Tokens.END).isPresent()) {
-			inp.setEndBlocks(parseBlock());
+			inp.setEndBlocks(null);
+			acceptSeperators();
 			return true;
 		}
+		
 		else {
+			tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE);
 			Optional<Node> operation = parseOperation();
 			BlockNode block = parseBlock();
 			inp.setBlocks(new BlockNode(block.getStatements(), operation));
@@ -84,51 +95,268 @@ public class Parser {
 		}
 	}
 	
-	public BlockNode parseBlock() {
-		LinkedList<StatementNode> statements = new LinkedList<StatementNode>(); 
+	public BlockNode parseBlock() throws Exception {
+		LinkedList<StatementNode> statements = new LinkedList<StatementNode>();
+		// multiline block
 		if(tokenMNG.matchAndRemove(Token.Tokens.OPENBRACE).isPresent()) {
-			/*given that we currently do not process statements, this would infinitely loop
-			 *logically, we would process the statements in the given block and use the end
-			 *brace as a conditional to stop
-			 */
-			//while(!tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE).isPresent()) {
-				//some function that parses
-				statements.add(null);
-			//}
+			acceptSeperators();
+			while(!tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE).isPresent()) {
+				statements.add(parseStatement());
+			}
+			acceptSeperators();
 		}
-		tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE);
-		acceptSeperators();
+		// singleline block
+		else {
+			acceptSeperators();
+			statements.add(parseStatement());
+			acceptSeperators();
+		}
 		return new BlockNode(statements,null);
 	}
 	
-	public Optional<Node> parseBottomLevel() throws Exception{
-			if(tokenMNG.peek(0).isPresent()) {
-				if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.STRINGLITERAL)))
-					return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.STRINGLITERAL).get().getTokenValue()));
-				else if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.NUMBER))) 
-					return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.NUMBER).get().getTokenValue()));
-				else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.PATTERN))
-					return Optional.of(new PatternNode(tokenMNG.matchAndRemove(Token.Tokens.PATTERN).get().getTokenValue()));
-				else if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()){
-					Optional<Node> parseOperationRes = parseOperation();
-					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent())
-						return parseOperationRes;
-					else
-						throw new Exception("Missing close )");
-				}
-				else if(tokenMNG.matchAndRemove(Token.Tokens.EXCLAMATION).isPresent()) 
-					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.NOT));
-				else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) 
-					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.UNARYNEGATIVE));
-				else if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) 
-					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.UNARYPOSITIVE));
-				else if(tokenMNG.matchAndRemove(Token.Tokens.INCREMENT).isPresent())
-					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREINCREMENT));
-				else if(tokenMNG.matchAndRemove(Token.Tokens.DECREMENT).isPresent())
-					return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREDECREMENT));
-				else
-					return parseLValue();
+	public StatementNode parseStatement() throws Exception{
+		acceptSeperators();
+		if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.IF)) {
+			return parseIf();
+		}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.CONTINUE)) {
+			return parseContinue();
+		}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.BREAK)) {
+			return parseBreak();
+		}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.FOR)) {
+			 return parseFor();
+		}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.DELETE)) {
+			return parseDelete();
 			}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WHILE)) {
+			return parseWhile();
+		}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.DO)) {
+			return parseDoWhile();
+		}
+		else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.RETURN)) {
+			return parseReturn();
+		}
+		else {
+			Optional<Node> parseOperationResult = parseOperation();
+			if(parseOperationResult.isEmpty()) {
+				return null;
+			}
+			if(parseOperationResult.get() instanceof AssignmentNode) {
+				return (StatementNode) parseOperationResult.get();
+			}
+			else if(parseOperationResult.get() instanceof ParseFunctionCallNode) {
+				return (StatementNode) parseOperationResult.get();
+			}
+			else if(parseOperationResult.get() instanceof OperationNode) {
+				return (StatementNode) parseOperationResult.get();
+			}
+		}
+		acceptSeperators();
+		return null;
+	}
+	
+	public StatementNode parseFunctionCall() throws Exception {
+		if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD) && tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.OPENPARENTHSIS)) {
+			String functionName = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
+			if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
+				LinkedList<String> parameters = new LinkedList<String>();
+				while(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
+					acceptSeperators();
+					if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
+						// case 1 parameter
+						if(tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.CLOSEPARENTHSIS)) {
+							parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());
+						}
+						// case n parameter
+						else if(tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.COMMA)) {
+							if(tokenMNG.peek(2).get().getTokenType().equals(Token.Tokens.WORD)) {
+								parameters.add(tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue());
+								tokenMNG.matchAndRemove(Token.Tokens.COMMA);
+							}
+						}
+						else
+							throw new Exception("Unexpected character");
+					}
+				}
+				if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isEmpty())
+					throw new Exception("Expected )");
+				return new ParseFunctionCallNode(functionName, parameters);
+			}
+			else 
+				throw new Exception("Expected (");
+		}
+		return null;
+	}
+	
+	public StatementNode parseBreak() throws Exception{
+		tokenMNG.matchAndRemove(Token.Tokens.BREAK);
+		return new ParseBreakNode();
+	}
+	
+	public StatementNode parseIf() throws Exception{
+		if(tokenMNG.matchAndRemove(Token.Tokens.IF).isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
+				Optional<Node> ifCondition = parseOperation();
+				if(ifCondition.isEmpty())
+					throw new Exception("Expected condition");
+				if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent()) {
+					Node statements = parseBlock();
+					if(tokenMNG.matchAndRemove(Token.Tokens.ELSE).isPresent()) {
+						if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.IF)) {
+							ParseIfNode nestedIfNode = (ParseIfNode) parseIf();
+							return new ParseIfNode(ifCondition.get(),statements,nestedIfNode);
+						}
+						BlockNode elseBlockStatements = parseBlock();
+						ParseIfNode elseNoIfNode = new ParseIfNode(null,elseBlockStatements);
+						return new ParseIfNode(ifCondition.get(),statements, elseNoIfNode);
+					}
+					else
+						return new ParseIfNode(ifCondition.get(),statements);
+				}
+				else
+					throw new Exception("Missing righthand )");
+			}
+			else
+				throw new Exception("Expected (");
+		}
+		return null;
+	}
+	
+	public StatementNode parseFor() throws Exception{
+		if(tokenMNG.matchAndRemove(Token.Tokens.FOR).isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
+				//check if forInLoop
+				if(tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.IN)) {
+					Optional<Node> forInCondition = parseOperation();
+					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent()) {
+						Optional<Node> body = Optional.of(parseBlock());
+						return new ParseForEachNode(forInCondition.get(), body.get());
+					}
+					else
+						throw new Exception("Missing )");
+				}
+				//regular for loop
+				else {
+					Optional<Node> forCondition = parseOperation();
+					acceptSeperators();
+					Optional<Node> secondForCondition = parseOperation();
+					acceptSeperators();
+					Optional<Node> thirdForCondition = parseOperation();
+					if(forCondition.isEmpty() || secondForCondition.isEmpty() || thirdForCondition.isEmpty())
+						throw new Exception("Missing condition");
+				
+					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent()) {
+						Optional<Node> body = Optional.of(parseBlock());
+						return new ParseForNode(forCondition, secondForCondition, thirdForCondition, body);
+					}
+					else
+						throw new Exception("Missing righthand )");
+				}
+			}
+			else
+				throw new Exception("Expected (");
+		}
+		return null;	
+	}
+	
+	public StatementNode parseDelete() throws Exception{
+		if(tokenMNG.matchAndRemove(Token.Tokens.DELETE).isPresent()) {
+			Optional<Node> deletionContent = parseLValue();
+			if(deletionContent.isEmpty())
+				throw new Exception("Expected condition");
+			return new ParseDeleteNode(deletionContent);
+		}
+		return null;	
+	}
+	
+	public StatementNode parseWhile() throws Exception{
+		if(tokenMNG.matchAndRemove(Token.Tokens.WHILE).isPresent()) {
+			if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
+				Optional<Node> whileCondition = parseOperation();
+				if(whileCondition.isEmpty())
+					throw new Exception("Expected condition");
+				if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent()) {
+					Optional<Node> body = Optional.of(parseBlock());
+					return new ParseWhileNode(whileCondition,body);
+				}
+				else
+					throw new Exception("Missing righthand )");
+			}
+			else
+				throw new Exception("Expected (");
+		}
+		return null;
+	}
+	
+	public StatementNode parseDoWhile() throws Exception{
+		if(tokenMNG.matchAndRemove(Token.Tokens.DO).isPresent()) {
+				Optional<Node> body = Optional.of(parseBlock());
+				if(tokenMNG.matchAndRemove(Token.Tokens.WHILE).isPresent()) {
+					if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
+						Optional<Node> whileCondition = parseOperation();
+						if(whileCondition.isEmpty())
+							throw new Exception("Missing condition");
+						if(!tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent())
+							throw new Exception("Missing )");
+						return new ParseDoWhileNode(whileCondition, body);
+					}
+					else
+						throw new Exception("Missing (");
+				}
+		}
+		return null;
+	}
+	
+	public StatementNode parseReturn() throws Exception{
+		if(tokenMNG.matchAndRemove(Token.Tokens.RETURN).isPresent()) {
+			ParseReturnNode returnNode = new ParseReturnNode(parseOperation());
+			return returnNode;
+		}
+		return null;
+	}
+	
+	public StatementNode parseContinue(){
+		if(tokenMNG.matchAndRemove(Token.Tokens.CONTINUE).isPresent())
+			return new ParseContinueNode();
+		return null;
+	}
+		
+	public Optional<Node> parseBottomLevel() throws Exception{
+		if(tokenMNG.peek(0).isPresent()) {
+			if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.STRINGLITERAL)))
+				return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.STRINGLITERAL).get().getTokenValue()));
+			else if(tokenMNG.peek(0).get().getTokenType().equals((Token.Tokens.NUMBER))) 
+				return Optional.of(new ConstantNode(tokenMNG.matchAndRemove(Token.Tokens.NUMBER).get().getTokenValue()));
+			else if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.PATTERN))
+				return Optional.of(new PatternNode(tokenMNG.matchAndRemove(Token.Tokens.PATTERN).get().getTokenValue()));
+			else if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()){
+				Optional<Node> parseOperationRes = parseOperation();
+				if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEPARENTHSIS).isPresent())
+					return parseOperationRes;
+				else
+					throw new Exception("Missing close )");
+			}
+			else if(tokenMNG.matchAndRemove(Token.Tokens.EXCLAMATION).isPresent()) 
+				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.NOT));
+			else if(tokenMNG.matchAndRemove(Token.Tokens.MINUS).isPresent()) 
+				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.UNARYNEGATIVE));
+			else if(tokenMNG.matchAndRemove(Token.Tokens.PLUS).isPresent()) 
+				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.UNARYPOSITIVE));
+			else if(tokenMNG.matchAndRemove(Token.Tokens.INCREMENT).isPresent())
+				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREINCREMENT));
+			else if(tokenMNG.matchAndRemove(Token.Tokens.DECREMENT).isPresent())
+				return Optional.of(new OperationNode(parseOperation(),OperationNode.possibleOperations.PREDECREMENT));
+			else {
+				Node functionCallResult = parseFunctionCall();
+				if(functionCallResult != null)
+					return Optional.of(functionCallResult);
+				return parseLValue();
+				}
+		}
 		return Optional.empty();
 	}
 

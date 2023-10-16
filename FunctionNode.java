@@ -12,6 +12,10 @@ public class FunctionNode extends Node{
 		this.statements = statements;
 	}
 	
+	public void addStatements(StatementNode statement) {
+		statements.add(statement);
+	}
+	
 	public String toString() {
 		String parametersInList = "";
 		String statementsInList = "";
@@ -23,9 +27,12 @@ public class FunctionNode extends Node{
 		catch (Exception E){
 			
 		}
-		for(StatementNode statement : statements)
-			statementsInList += statement;
-		return ("function " + name + "(" + parametersInList + "){\n" + "\t" + statementsInList + "\n}\n");
+		if(!statements.isEmpty())
+			for(StatementNode statement : statements) {
+				if(statement != null)
+					statementsInList += "\t" + statement;
+				}
+		return ("function " + name + "(" + parametersInList + "){\n" + statementsInList + "\n\t}\n");
 	}
 	
 }

@@ -1,6 +1,6 @@
 import java.util.Optional;
 
-public class OperationNode extends Node{
+public class OperationNode extends StatementNode{
 	
 	private Optional<Node> leftNode;
 	private Optional<Node> rightNode;
@@ -26,11 +26,11 @@ public class OperationNode extends Node{
 	
 	public String toString() {
 		if(leftNode.isEmpty() && rightNode.isEmpty())
-			return operator.toString();
+			return operator.toString() + "";
 		if(leftNode.isEmpty() && rightNode.isPresent())
-			return operator.toString() + " " + rightNode.get().toString();
+			return operator.toString() + " " + rightNode.get().toString() + "";
 		if(rightNode.isEmpty() && leftNode.isPresent())
-			return operator.toString() + " " + leftNode.get().toString();
-		return leftNode.get().toString() + " " + operator.toString() + " " + rightNode.get().toString();
+			return operator.toString() + " " + leftNode.get().toString() + "";
+		return leftNode.get().toString() + " " + operator.toString() + " " + rightNode.get().toString() + "";
 	}
 }
