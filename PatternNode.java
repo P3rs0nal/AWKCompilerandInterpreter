@@ -5,6 +5,10 @@ public class PatternNode extends Node{
 		pattern = inp;
 	}
 	
+	public String getPattern() {
+		return pattern;
+	}
+	
 	public String toString() {
 		return pattern;
 	}

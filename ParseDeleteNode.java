@@ -8,6 +8,6 @@ public class ParseDeleteNode extends StatementNode{
 	}
 
 	public String toString() {
-		return null;
+		return "delete " + arrayName.get().toString();
 	}
 }

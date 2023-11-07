@@ -18,10 +18,18 @@ public class OperationNode extends StatementNode{
 		this.operator = operator;
 	}
 	
-	public OperationNode(Optional<Node> rightNode, possibleOperations operator) {
-		this.leftNode = Optional.empty();
-		this.rightNode = rightNode;
+	public OperationNode(Optional<Node> leftNode, possibleOperations operator) {
+		this.leftNode = leftNode;
+		this.rightNode = Optional.empty();
 		this.operator = operator;
+	}
+	
+	public Optional<Node> getLeft(){
+		return leftNode;
+	}
+	
+	public Optional<Node> getRight(){
+		return rightNode;
 	}
 	
 	public String toString() {

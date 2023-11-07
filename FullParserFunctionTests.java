@@ -30,7 +30,7 @@ public class FullParserFunctionTests {
 	
 	@Test
     public void testFunctionsWithBody() throws Exception {
-         String multipleFunctions = "BEGIN function two(f,y,z){ if(e=2)\n x++; } function testFunction(parameter, someOtherParameter){} END";
+         String multipleFunctions = "{if($2==$3){print $1\",\"$2\",\"$3} else {print \"No Duplicates\"}} ";
          
          Lexer functionLex = new Lexer(multipleFunctions);
          
@@ -257,6 +257,31 @@ public class FullParserFunctionTests {
     }
     
     @Test
+    public void testDelete() throws Exception {
+         String deleteCall = "BEGIN function returnCall(f,y,z){delete x} END";
+         String deleteInArrayCall = "BEGIN function nestedReturnCall(parameter, someOtherParameter){delete x[k in b]} END";
+
+    	 Lexer deleteCallLex = new Lexer(deleteCall);
+         Lexer deleteInArrayCallLex = new Lexer(deleteInArrayCall);
+
+         deleteCallLex.Lex();
+         deleteInArrayCallLex.Lex();
+
+         Parser deleteCallParse = new Parser(deleteCallLex.getTokens());
+         Parser deleteInArrayCallParse = new Parser(deleteInArrayCallLex.getTokens());
+
+         ProgramNode deleteCallProg = deleteCallParse.parse();
+         ProgramNode deleteInArrayCallProg = deleteInArrayCallParse.parse();
+
+         Assert.assertEquals(deleteCallProg.toString().trim().replace("\r", ""),"function returnCall(f,y,z){\n"
+         		+ "	delete x\n"
+         		+ "	}");
+         Assert.assertEquals(deleteInArrayCallProg.toString().trim().replace("\r", ""),"function nestedReturnCall(parameter,someOtherParameter){\n"
+         		+ "	delete x k IN b\n"
+         		+ "	}");
+    }
+    
+    @Test
     public void testCompoundFunction() throws Exception {
          String returnCall = "BEGIN function returnCall(f,y,z){x = 5; while(x<19){x++; for(i; i<=2; i++){if(x<=i){x++}else if(x>=i){p++} else return x}}} END";
 
@@ -276,6 +301,112 @@ public class FullParserFunctionTests {
          		+ "POSTINCREMENT p else	\n"
          		+ "return(x)   \n"
          		+ "	}");
+    }
+    
+    @Test
+    public void testBuiltInFunction() throws Exception {
+         String getlineCall = "{getline}";
+         String printCall = "{print}";
+         String printfCall = "{printf}";
+         String exitCall = "{exit}";
+         String nextfileCall = "{nextfile}";
+         String nextCall = "{next}";
+
+    	 Lexer getlineCallLex = new Lexer(getlineCall);
+    	 Lexer printCallLex = new Lexer(printCall);
+    	 Lexer printfCallLex = new Lexer(printfCall);
+    	 Lexer exitCallLex = new Lexer(exitCall);
+    	 Lexer nextfileCallLex = new Lexer(nextfileCall);
+    	 Lexer nextCallLex = new Lexer(nextCall);
+
+    	 getlineCallLex.Lex();
+    	 printCallLex.Lex();
+    	 printfCallLex.Lex();
+    	 exitCallLex.Lex();
+    	 nextfileCallLex.Lex();
+    	 nextCallLex.Lex();
+
+         Parser getlineCallParse = new Parser(getlineCallLex.getTokens());
+         Parser printCallParse = new Parser(printCallLex.getTokens());
+         Parser printfCallParse = new Parser(printfCallLex.getTokens());
+         Parser exitCallParse = new Parser(exitCallLex.getTokens());
+         Parser nextfileCallParse = new Parser(nextfileCallLex.getTokens());
+         Parser nextCallParse = new Parser(nextCallLex.getTokens());
+
+         ProgramNode getlineCallProg = getlineCallParse.parse();
+         ProgramNode printCallProg = printCallParse.parse();
+         ProgramNode printfCallProg = printfCallParse.parse();
+         ProgramNode exitCallProg = exitCallParse.parse();
+         ProgramNode nextfileCallProg = nextfileCallParse.parse();
+         ProgramNode nextCallProg = nextCallParse.parse();
+
+         Assert.assertEquals(getlineCallProg.toString().trim().replace("\r", ""),"getline");
+         Assert.assertEquals(printCallProg.toString().trim().replace("\r", ""),"print");
+         Assert.assertEquals(printfCallProg.toString().trim().replace("\r", ""),"printf");
+         Assert.assertEquals(exitCallProg.toString().trim().replace("\r", ""),"exit");
+         Assert.assertEquals(nextfileCallProg.toString().trim().replace("\r", ""),"nextfile");
+         Assert.assertEquals(nextCallProg.toString().trim().replace("\r", ""),"next");
+    }
+    
+    @Test
+    public void testCompoundBuiltInFunction() throws Exception {
+         String getlineCall = "{for(i=0;i<5;i++) getline hh}";
+         String printCall = "{if(x==0) print \"hello\"}";
+         String printfCall = "{while(k==2) printf \"%-10s %s\n\", $1, $2}";
+         String exitCall = "{if(x==2) k=2 else exit 5}";
+         String nextfileCall = "BEGIN {print \"file content\" while((getline < fileName)>0){print $0} nextfile print \"more file content\" while((getline < otherFile) > 0) print $1}";
+         String nextCall = "{if(x == y) {next} print $1}";
+
+    	 Lexer getlineCallLex = new Lexer(getlineCall);
+    	 Lexer printCallLex = new Lexer(printCall);
+     	 Lexer printfCallLex = new Lexer(printfCall);
+    	 Lexer exitCallLex = new Lexer(exitCall);
+    	 Lexer nextfileCallLex = new Lexer(nextfileCall);
+    	 Lexer nextCallLex = new Lexer(nextCall);
+
+    	 getlineCallLex.Lex();
+    	 printCallLex.Lex();
+    	 printfCallLex.Lex();
+    	 exitCallLex.Lex();
+    	 nextfileCallLex.Lex();
+    	 nextCallLex.Lex();
+
+         Parser getlineCallParse = new Parser(getlineCallLex.getTokens());
+         Parser printCallParse = new Parser(printCallLex.getTokens());
+         Parser printfCallParse = new Parser(printfCallLex.getTokens());
+         Parser exitCallParse = new Parser(exitCallLex.getTokens());
+         Parser nextfileCallParse = new Parser(nextfileCallLex.getTokens());
+         Parser nextCallParse = new Parser(nextCallLex.getTokens());
+
+         ProgramNode getlineCallProg = getlineCallParse.parse();
+         ProgramNode printCallProg = printCallParse.parse();
+         ProgramNode printfCallProg = printfCallParse.parse();
+         ProgramNode exitCallProg = exitCallParse.parse();
+         ProgramNode nextfileCallProg = nextfileCallParse.parse();
+         ProgramNode nextCallProg = nextCallParse.parse();
+
+         Assert.assertEquals(getlineCallProg.toString().trim().replace("\r", ""),"for(i = 0;i LESSTHAN 5;POSTINCREMENT i)\n"
+         		+ "	getline hh");
+         Assert.assertEquals(printCallProg.toString().trim().replace("\r", ""),"if(x EQUAL 0)\n"
+         		+ "print hello");
+         Assert.assertEquals(printfCallProg.toString().trim().replace("\r", ""),"while(k EQUAL 2)\n"
+         		+ "	printf %-10s %s\n"
+         		+ " DOLLAR 1 DOLLAR 2");
+         Assert.assertEquals(exitCallProg.toString().trim().replace("\r", ""),"if(x EQUAL 2)\n"
+         		+ "k = 2 else	\n"
+         		+ "exit 5");
+         Assert.assertEquals(nextfileCallProg.toString().trim().replace("\r", ""),"print file content\n"
+         		+ " while(getline \n"
+         		+ " LESSTHAN fileName GREATERTHAN 0)\n"
+         		+ "	print DOLLAR 0\n"
+         		+ "  nextfile \n"
+         		+ " CONCATENATION print more file content\n"
+         		+ " while(getline \n"
+         		+ " LESSTHAN otherFile GREATERTHAN 0)\n"
+         		+ "	print DOLLAR 1");
+         Assert.assertEquals(nextCallProg.toString().trim().replace("\r", ""),"if(x EQUAL y)\n"
+         		+ "next \n"
+         		+ "  print DOLLAR 1");
     }
     
     @Test(expected = Exception.class)
@@ -343,7 +474,7 @@ public class FullParserFunctionTests {
     
     @Test(expected = Exception.class)
     public void testInvalidFunctionCallExceptionCall() throws Exception {
-        String exception = "BEGIN function returnCall(f,y,z){if(p==2){do return x while(x!=9)}else notAValidFunction( } END";
+        String exception = "BEGIN function returnCall(f,y,z){if(p==2){do return x while(x!=9)}else if(x) } END";
    	    Lexer exceptionLex = new Lexer(exception);
    	    exceptionLex.Lex();
         Parser exceptionParse = new Parser(exceptionLex.getTokens());

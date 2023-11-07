@@ -43,6 +43,15 @@ public class Token {
 	public String getTokenValue() {
 		return value;
 	}
+	
+	public int getLineNumber() {
+		return lineNumber;
+	}
+	
+	public int getPosition() {
+		return startPosition;
+	}
+	
 	public String toString() {
 		if(tokenType == Tokens.SEPARATOR)
 			return "SEPARATOR";

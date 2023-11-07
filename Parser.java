@@ -16,9 +16,85 @@ public class Parser {
 		return seperator;
 	}
 	
+//	public boolean findMatch(LinkedList<Token> inp) {
+//		
+//		return true;
+//	}
+//	
+//	public boolean matchers() throws Exception {
+//		LinkedList<Token> copy = tokenMNG.getTokens();
+//		int para = 0;
+//		int bracket = 0;
+//		int brace = 0;
+//		int lineNumber = 0;
+//		int startPos = 0;
+//		for(int index = 0; index < copy.size(); index++) {
+//			Token token = copy.get(index);
+//			if(token.getTokenType().equals(Token.Tokens.OPENPARENTHSIS)) {
+//				para++;
+//				copy.subList(startPos, index).clear();
+//				startPos = token.getPosition();
+//				lineNumber = token.getLineNumber();
+//				if(!findMatch(copy)) {
+//					throw new Exception("Exception at line: " + lineNumber + ", " + startPos);
+//				}
+//			}//
+//			if(token.getTokenType().equals(Token.Tokens.OPENBRACKET)) {
+//				bracket++;
+//				copy.subList(startPos, index).clear();
+//				startPos = token.getPosition();
+//				lineNumber = token.getLineNumber();
+//				if(!findMatch(copy)) {
+//					throw new Exception("Exception at line: " + lineNumber + ", " + startPos);
+//				}
+//			}
+//			if(token.getTokenType().equals(Token.Tokens.OPENBRACE)) {
+//				brace++;
+//				copy.subList(startPos, index).clear();
+//				startPos = token.getPosition();
+//				lineNumber = token.getLineNumber();
+//				if(!findMatch(copy)) {
+//					throw new Exception("Exception at line: " + lineNumber + ", " + startPos);
+//				}
+//			}
+//		}
+//		return true;
+//	}
+//	
+//	public boolean matchDelimeters() {
+//		LinkedList<Token> tokenCopy = tokenMNG.getTokens();
+//		int openPara = 0;
+//		int openBracket = 0;
+//		int openBrace = 0;
+//		int closePara = 0;
+//		int closeBracket = 0;
+//		int closeBrace = 0;
+//		for(Token token : tokenCopy) {
+//			if(token.getTokenType().equals(Token.Tokens.OPENPARENTHSIS))
+//				openPara++;
+//			if(token.getTokenType().equals(Token.Tokens.OPENBRACKET))
+//				openBracket++;
+//			if(token.getTokenType().equals(Token.Tokens.OPENBRACE))
+//				openBrace++;
+//			if(token.getTokenType().equals(Token.Tokens.CLOSEPARENTHSIS))
+//				closePara++;
+//			if(token.getTokenType().equals(Token.Tokens.CLOSEBRACKET))
+//				closeBracket++;
+//			if(token.getTokenType().equals(Token.Tokens.CLOSEBRACE))
+//				closeBrace++;
+//		}
+//		if(openPara != closePara || openBracket != closeBracket || openBrace != closeBrace)
+//			return false;
+//		return true;
+//	}
+	
 	public ProgramNode parse() throws Exception {
+
 		ProgramNode program = new ProgramNode(new LinkedList<FunctionNode>(), new LinkedList<BlockNode>(), new LinkedList<BlockNode>(), new LinkedList<BlockNode>());
-		while(tokenMNG.moreTokens()) { 
+		// check if there are any unmatched delimeters prior to running
+//		if(!matchDelimeters())
+//			throw new Exception("Unmatched delimeter");
+		while(tokenMNG.moreTokens()) {
 			if(!parseFunction(program)) {
 				if(!parseAction(program)) {
 					throw new Exception("Error.");
@@ -32,6 +108,7 @@ public class Parser {
 		String name;
 		LinkedList<String> parameters = new LinkedList<String>();
 		LinkedList<StatementNode> statements = new LinkedList<StatementNode>();
+		tokenMNG.matchAndRemove(Token.Tokens.OPENBRACE);
 		if(tokenMNG.matchAndRemove(Token.Tokens.FUNCTION).isPresent()) {
 			if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 				name = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
@@ -64,6 +141,7 @@ public class Parser {
 					}
 					FunctionNode function = new FunctionNode(name, parameters, statements);
 					inp.setFunctions(function);
+					tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE);
 					return true;
 				}
 				else 
@@ -72,6 +150,7 @@ public class Parser {
 			else
 				throw new Exception("Missing function name");
 		}
+		
 		return false;
 	}
 
@@ -85,11 +164,11 @@ public class Parser {
 			acceptSeperators();
 			return true;
 		}
-		
 		else {
-			tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE);
-			Optional<Node> operation = parseOperation();
 			BlockNode block = parseBlock();
+			Optional<Node> operation = parseOperation();
+			tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE);	
+			acceptSeperators();
 			inp.setBlocks(new BlockNode(block.getStatements(), operation));
 			return true;
 		}
@@ -98,17 +177,29 @@ public class Parser {
 	public BlockNode parseBlock() throws Exception {
 		LinkedList<StatementNode> statements = new LinkedList<StatementNode>();
 		// multiline block
+		//System.out.println(tokenMNG.getTokens());
 		if(tokenMNG.matchAndRemove(Token.Tokens.OPENBRACE).isPresent()) {
 			acceptSeperators();
 			while(!tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE).isPresent()) {
-				statements.add(parseStatement());
+				var statement = parseStatement();
+				if(statement == null)
+					if(tokenMNG.matchAndRemove(Token.Tokens.CLOSEBRACE).isEmpty())
+						throw new Exception("Exception here testing");
+				statements.add(statement);
 			}
 			acceptSeperators();
 		}
 		// singleline block
 		else {
 			acceptSeperators();
-			statements.add(parseStatement());
+			var statement = parseStatement();
+			//System.out.println(tokenMNG.getTokens());
+			if(statement == null) {
+//				System.out.println(statement + "  " + tokenMNG.getTokens());
+				throw new Exception("Exception here testing");
+				
+			}
+			statements.add(statement);
 			acceptSeperators();
 		}
 		return new BlockNode(statements,null);
@@ -160,10 +251,10 @@ public class Parser {
 	}
 	
 	public StatementNode parseFunctionCall() throws Exception {
+		LinkedList<String> parameters = new LinkedList<String>();
 		if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD) && tokenMNG.peek(1).get().getTokenType().equals(Token.Tokens.OPENPARENTHSIS)) {
 			String functionName = tokenMNG.matchAndRemove(Token.Tokens.WORD).get().getTokenValue();
 			if(tokenMNG.matchAndRemove(Token.Tokens.OPENPARENTHSIS).isPresent()) {
-				LinkedList<String> parameters = new LinkedList<String>();
 				while(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
 					acceptSeperators();
 					if(tokenMNG.peek(0).get().getTokenType().equals(Token.Tokens.WORD)) {
@@ -188,6 +279,44 @@ public class Parser {
 			}
 			else 
 				throw new Exception("Expected (");
+		}
+		if(tokenMNG.matchAndRemove(Token.Tokens.GETLINE).isPresent()) {
+			Optional<Node> parseOpResult = parseOperation();
+			if(parseOpResult.isPresent())
+				parameters.add(parseOpResult.get().toString());
+			return new ParseFunctionCallNode("getline", parameters);
+		}
+		if(tokenMNG.matchAndRemove(Token.Tokens.PRINT).isPresent()) {
+			Optional<Node> parseOperationResult = parseOperation();
+			while(parseOperationResult.isPresent()) {
+				parameters.add(parseOperationResult.get().toString());
+				if(tokenMNG.matchAndRemove(Token.Tokens.COMMA).isEmpty())
+					return new ParseFunctionCallNode("print", parameters);
+				parseOperationResult = parseOperation();
+			}
+			return new ParseFunctionCallNode("print", parameters);
+		}
+		if(tokenMNG.matchAndRemove(Token.Tokens.PRINTF).isPresent()) {
+			Optional<Node> parseOperationResult = parseOperation();
+			while(parseOperationResult.isPresent()) {
+				parameters.add(parseOperationResult.get().toString());
+				if(tokenMNG.matchAndRemove(Token.Tokens.COMMA).isEmpty())
+					return new ParseFunctionCallNode("printf", parameters);
+				parseOperationResult = parseOperation();
+			}
+			return new ParseFunctionCallNode("printf", parameters);
+		}
+		if(tokenMNG.matchAndRemove(Token.Tokens.EXIT).isPresent()) {
+			Optional<Node> parseOperationResult = parseOperation();
+			if(parseOperationResult.isPresent())
+				parameters.add(parseOperationResult.get().toString());
+			return new ParseFunctionCallNode("exit", parameters);
+		}
+		if(tokenMNG.matchAndRemove(Token.Tokens.NEXTFILE).isPresent()) {
+			return new ParseFunctionCallNode("nextfile", null);
+		}
+		if(tokenMNG.matchAndRemove(Token.Tokens.NEXT).isPresent()) {
+			return new ParseFunctionCallNode("next", null);
 		}
 		return null;
 	}

@@ -12,14 +12,17 @@ public class ParseFunctionCallNode extends StatementNode{
 	
 	public String toString() {
 		String parametersInList = "";
-		for(String parameter: parameters)
-			parametersInList += parameter + " ";
-		try {
-			parametersInList = parametersInList.substring(0, parametersInList.length()-1);
+		if(parameters != null)
+			for(String parameter: parameters)
+				parametersInList += parameter + " ";
+			try{
+				parametersInList = parametersInList.substring(0, parametersInList.length()-1);
 			}
 			catch (Exception E){
 				
 			}
+		if(this.functionName == "getline" || this.functionName == "print" || this.functionName == "printf" || this.functionName == "exit" || this.functionName == "nextfile" || this.functionName == "next")
+			return (functionName + " " + parametersInList + "\n");
 		return functionName + "(" + parametersInList + ")";
 	}
 

@@ -14,6 +14,14 @@ public class VariableReferenceNode extends Node{
 		this.expression = Optional.empty();
 	}
 	
+	public String getName() {
+		return varName;
+	}
+	
+	public Optional<Node> getExpression(){
+		return expression;
+	}
+	
 	public String toString() {
 		if(expression.isEmpty())
 			return varName;
