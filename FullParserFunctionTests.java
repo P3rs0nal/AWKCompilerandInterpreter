@@ -51,7 +51,7 @@ public class FullParserFunctionTests {
 	
 	@Test
     public void testStatementsContinueBreak() throws Exception {
-         String statementFunction = "BEGIN function statement(f,y,z){ e++; x--; x = 5 + 2; j = 9*6+8^2^3; if(x+2==5){p=2; t=4;}} END";
+         String statementFunction = "BEGIN{ function statement(f,y,z){ e++; x--; x = 5 + 2; j = 9*6+8^2^3; if(x+2==5){p=2; t=4;}}} END";
          String ContinueBreakFunction = "BEGIN function otherStatement(parameter, someOtherParameter){continue break} END";
          
          Lexer statementLex = new Lexer(statementFunction);

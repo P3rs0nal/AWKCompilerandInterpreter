@@ -4,8 +4,7 @@ import java.util.function.*;
 
 public class BuiltInFunctionNode extends FunctionNode{
 	boolean variadic;
-	String name;
-	LinkedList<String> parameters;
+	LinkedList<String> parameters = new LinkedList<String>();
 	Function<HashMap<String,InterpreterDataType>, String> execute;
 	
 	public BuiltInFunctionNode(Function<HashMap<String,InterpreterDataType>, String> execute, boolean variadic) {
@@ -14,6 +13,10 @@ public class BuiltInFunctionNode extends FunctionNode{
 	}
 	
 	public String toString() {
-		return name;
+		String ret = "";
+		if(!parameters.isEmpty())
+			for(String para: parameters)
+				ret+= para;
+		return "here" + ret;
 	}
 }

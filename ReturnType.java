@@ -18,4 +18,8 @@ public class ReturnType {
 		this.returnValue = returnValue;
 	}
 	
+	public String toString() {
+		return (returnValue + " with type: " + typeOfRet);
+	}
+	
 }

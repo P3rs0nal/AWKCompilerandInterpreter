@@ -25,13 +25,20 @@ public class FunctionNode extends Node{
 		this.parameters = null;
 		this.statements = null;
 	}
-	
 	public void addStatements(StatementNode statement) {
 		statements.add(statement);
 	}
 	
-	public String name() {
+	public String getName() {
 		return name;
+	}
+	
+	public LinkedList<String> getParameters(){
+		return parameters;
+	}
+	
+	public LinkedList<StatementNode> getStatements(){
+		return statements;
 	}
 	
 	public String toString() {

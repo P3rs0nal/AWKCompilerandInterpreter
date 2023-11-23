@@ -3,17 +3,25 @@ import java.util.LinkedList;
 public class ParseFunctionCallNode extends StatementNode{
 
 	private String functionName;
-	private LinkedList<String> parameters;
+	private LinkedList<Node> parameters;
 	
-	public ParseFunctionCallNode(String functionName, LinkedList<String> parameters) {
+	public ParseFunctionCallNode(String functionName, LinkedList<Node> parameters) {
 		this.functionName = functionName;
 		this.parameters = parameters;
+	}
+	
+	public String getFunction() {
+		return functionName;
+	}
+	
+	public LinkedList<Node> getStatements(){
+		return parameters;
 	}
 	
 	public String toString() {
 		String parametersInList = "";
 		if(parameters != null)
-			for(String parameter: parameters)
+			for(Node parameter: parameters)
 				parametersInList += parameter + " ";
 			try{
 				parametersInList = parametersInList.substring(0, parametersInList.length()-1);
